@@ -75,6 +75,14 @@ Wrap wide content (plotly widgets, wide tables) in full-viewport divs:
 
 ## Tables
 
+- **Never use `cat()` + `table()` or `cat()` + `print()` to display tabular
+  data.** These produce plain-text console output that looks poor in HTML.
+  Instead, convert to a data frame and render with `knitr::kable()` or
+  `DT::datatable()`. For cross-tabulations, use `as.data.frame.matrix()` on
+  the `table()` result:
+  ```r
+  knitr::kable(as.data.frame.matrix(table(sce$condition, sce$donor_id)))
+  ```
 - Use `row.names = FALSE` in `knitr::kable()` or `DT::datatable()` when row names duplicate a column.
 - When a table contains gene symbols or gene IDs, make them clickable links (e.g. to NCBI Gene, Ensembl, or GeneCards).
 
@@ -257,6 +265,30 @@ When writing the References section:
 3. Fetch each DOI/URL to verify it resolves correctly.
 4. Format as a markdown list or table at the end of the document, before the Session Info section.
 
+## Post-render HTML Inspection
+
+After rendering, check the HTML output for warnings and messages from R code:
+
+1. **Warnings**: Search the rendered HTML for text like `Warning:` or
+   `Warning message:`. These indicate a real problem in the code. **Fix the
+   root cause** — do not suppress warnings with `warning: false` unless
+   you have confirmed the warning is a known false positive and documented
+   why in a code comment.
+
+2. **Messages**: Search the rendered HTML for package loading messages
+   (e.g. `Attaching package`, `Loading required package`), informational
+   output from functions, or other non-warning diagnostic text. If a message
+   is harmless (e.g. package load chatter), suppress it with
+   `#| message: false` in the chunk options. If it indicates a real issue,
+   fix the cause.
+
+3. **Stderr leakage**: Some packages print to stderr even for routine output.
+   Check for unexpected text between code-fold blocks that doesn't look like
+   intentional output.
+
+The goal is a clean HTML document with no stray console output between the
+narrative sections.
+
 ## Review Checklist
 
 When reviewing or authoring a bioinformatics `.qmd`, verify:
@@ -266,6 +298,7 @@ When reviewing or authoring a bioinformatics `.qmd`, verify:
 - [ ] All computed values are dynamic (inline R or generated tables)
 - [ ] `dplyr::filter()` used instead of bare `filter()`
 - [ ] File paths use `here::here()`
+- [ ] No `cat()` + `table()` or `cat()` + `print()` for tabular data (use `kable` or `DT`)
 - [ ] Tables suppress redundant row names
 - [ ] Gene symbols/IDs are clickable links
 - [ ] No faceted plot has more than ~15 panels (split if needed)
@@ -276,4 +309,5 @@ When reviewing or authoring a bioinformatics `.qmd`, verify:
 - [ ] Wide content wrapped in `:::{.column-screen}`
 - [ ] References section cites all methods used, with verified links
 - [ ] Session Info is the last section (collapsible callout)
+- [ ] No warnings or stray messages visible in the rendered HTML
 - [ ] Alt text provided for key figures (invoke `quarto:quarto-alt-text`)
