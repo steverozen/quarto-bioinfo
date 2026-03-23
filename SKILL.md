@@ -97,6 +97,79 @@ Wrap wide content (plotly widgets, wide tables) in full-viewport divs:
     ```
 - When a table contains gene symbols or gene IDs, make them clickable links (e.g. to NCBI Gene, Ensembl, or GeneCards).
 
+## Gene Set Enrichment and Pathway Analysis
+
+Use **clusterProfiler** and **enrichplot** for GSEA and pathway enrichment — not
+manual fgsea + ggplot. clusterProfiler wraps fgsea internally and provides
+publication-ready plotting via enrichplot, with correct semantics for dotplots,
+ridgeplots, enrichment maps, and cnetplots.
+
+### Preferred workflow
+
+```r
+library(clusterProfiler)
+library(enrichplot)
+library(msigdbr)
+
+# Build gene set term-to-gene mapping for clusterProfiler
+hallmark_t2g <- msigdbr(species = "Homo sapiens", collection = "H") |>
+  dplyr::select(gs_name, gene_symbol)
+
+# Create a named, sorted gene list (e.g. limma t-statistics)
+gene_list <- setNames(de_results$t, de_results$gene)
+gene_list <- sort(gene_list, decreasing = TRUE)
+
+# Run GSEA via clusterProfiler (uses fgsea internally)
+gsea_res <- clusterProfiler::GSEA(
+  geneList = gene_list,
+  TERM2GENE = hallmark_t2g,
+  minGSSize = 15,
+  maxGSSize = 500,
+  pvalueCutoff = 1.0   # keep all for exploration
+)
+
+# Dotplot (enrichplot)
+enrichplot::dotplot(gsea_res, showCategory = 15, title = "GSEA: Hallmark")
+
+# Ridgeplot
+enrichplot::ridgeplot(gsea_res, showCategory = 15)
+
+# Running-score plot for a specific pathway
+enrichplot::gseaplot2(gsea_res, geneSetID = "HALLMARK_E2F_TARGETS")
+```
+
+### Why not raw fgsea + ggplot?
+
+- **enrichplot::dotplot()** handles label wrapping, NES coloring, gene-ratio
+  sizing, and faceting correctly out of the box. Hand-rolled ggplot dotplots
+  often have sizing, labeling, or faceting issues.
+- **clusterProfiler::GSEA()** returns a proper `gseaResult` S4 object that
+  enrichplot functions know how to render, with correct column names and
+  metadata. Raw fgsea returns a plain data frame that requires manual
+  wrangling for every plot type.
+- enrichplot also provides `cnetplot()`, `emapplot()`, `treeplot()`, and
+  `heatplot()` — none of which have simple ggplot equivalents.
+
+### Per-cell-type GSEA
+
+When running GSEA across multiple cell types, loop and collect:
+
+```r
+gsea_list <- lapply(names(de_results_list), function(ct) {
+  gene_list <- setNames(de_results_list[[ct]]$t, de_results_list[[ct]]$gene)
+  gene_list <- sort(gene_list, decreasing = TRUE)
+  res <- clusterProfiler::GSEA(
+    geneList = gene_list, TERM2GENE = hallmark_t2g,
+    minGSSize = 15, maxGSSize = 500, pvalueCutoff = 1.0
+  )
+  res@result$cell_type <- ct
+  res
+})
+```
+
+Use `enrichplot::dotplot()` on individual results, or bind `res@result`
+data frames for a combined faceted view.
+
 ## Session Info
 
 End every document with:
@@ -296,27 +369,34 @@ When writing the References section:
 
 ## Post-render HTML Inspection
 
-After rendering, check the HTML output for warnings and messages from R code:
+After rendering, run the HTML warning checker:
 
-1. **Warnings**: Search the rendered HTML for text like `Warning:` or
-   `Warning message:`. These indicate a real problem in the code. **Fix the
-   root cause** — do not suppress warnings with `warning: false` unless
-   you have confirmed the warning is a known false positive and documented
-   why in a code comment.
+```bash
+Rscript ~/.claude/skills/quarto-bioinfo/check-html-warnings.R <file.html>
+```
 
-2. **Messages**: Search the rendered HTML for package loading messages
-   (e.g. `Attaching package`, `Loading required package`), informational
-   output from functions, or other non-warning diagnostic text. If a message
-   is harmless (e.g. package load chatter), suppress it with
-   `#| message: false` in the chunk options. If it indicates a real issue,
-   fix the cause.
+This script finds all `cell-output-stderr` blocks in the rendered HTML —
+the only reliable way to detect R warnings and messages. **Do NOT grep the
+raw HTML for "Warning"** — this produces false positives from CSS variables
+(`--bs-warning`), JavaScript libraries, and Bootstrap theming that are
+impossible to filter reliably.
 
-3. **Stderr leakage**: Some packages print to stderr even for routine output.
-   Check for unexpected text between code-fold blocks that doesn't look like
-   intentional output.
+The script classifies each issue:
 
-The goal is a clean HTML document with no stray console output between the
-narrative sections.
+- **WARNING** — An R `warning()` that leaked into the output. **Fix the root
+  cause** (e.g. deprecated function arguments, type mismatches). Only suppress
+  with `#| warning: false` if confirmed as a known false positive, and
+  document why in a code comment.
+
+- **PACKAGE_MESSAGE** — Package loading chatter (`Attaching package`,
+  `Loading required package`, masked-object notices). Suppress with
+  `#| message: false` in the chunk that loads the package.
+
+- **STDERR** — Other stderr output. Investigate; may be a message, warning,
+  or `cat(..., file = stderr())` call.
+
+Fix all issues, re-render, and re-run the checker until clean. The goal is
+zero `cell-output-stderr` blocks in the final HTML.
 
 ## Review Checklist
 
@@ -330,6 +410,7 @@ When reviewing or authoring a bioinformatics `.qmd`, verify:
 - [ ] No `cat()` + `table()` or `cat()` + `print()` for tabular data (use `kable` or `DT`)
 - [ ] Tables handle row names correctly (suppress if redundant with a column; promote to a filterable column if meaningful)
 - [ ] Gene symbols/IDs are clickable links
+- [ ] GSEA uses clusterProfiler::GSEA() + enrichplot (not raw fgsea + manual ggplot)
 - [ ] No faceted plot has more than ~15 panels (split if needed)
 - [ ] All `element_text(size = ...)` uses `rel()`, never absolute values
 - [ ] Effective base_size ≥ 6 pt and all `rel()` elements ≥ 6 pt effective (run `check-figure-sizes.R` to verify)
@@ -338,5 +419,5 @@ When reviewing or authoring a bioinformatics `.qmd`, verify:
 - [ ] Wide content wrapped in `:::{.column-screen}`
 - [ ] References section cites all methods used, with verified links
 - [ ] Session Info is the last section (collapsible callout)
-- [ ] No warnings or stray messages visible in the rendered HTML
+- [ ] No warnings or stray messages in rendered HTML (run `check-html-warnings.R` to verify)
 - [ ] Alt text provided for key figures (invoke `quarto:quarto-alt-text`)
