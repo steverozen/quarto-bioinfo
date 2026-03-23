@@ -99,9 +99,35 @@ for (i in seq_along(chunk_starts)) {
     numeric(0)
   }
 
-  # Check for rel() usage (good)
-  has_rel_sizes <- grepl("element_text\\([^)]*size\\s*=\\s*rel\\(", chunk_code,
-                         perl = TRUE)
+  # Extract rel() values and their theme element names
+  rel_entries <- data.frame(
+    element_name = character(0),
+    rel_value    = numeric(0),
+    stringsAsFactors = FALSE
+  )
+  rel_positions <- gregexpr(
+    "size\\s*=\\s*rel\\(([0-9.]+)\\)", chunk_code, perl = TRUE)
+  rel_matches <- regmatches(chunk_code, rel_positions)[[1]]
+  if (length(rel_matches) > 0) {
+    rel_starts <- as.integer(rel_positions[[1]])
+    for (ri in seq_along(rel_matches)) {
+      rv <- as.numeric(sub(".*rel\\(([0-9.]+)\\).*", "\\1", rel_matches[ri]))
+      # Look backward from match position to find the element name
+      preceding <- substr(chunk_code, 1, rel_starts[ri] - 1)
+      elem_match <- regmatches(preceding,
+        regexpr("(\\w+(\\.\\w+)*)\\s*=\\s*element_text\\([^)]*$",
+                preceding, perl = TRUE))
+      elem_name <- if (length(elem_match) > 0) {
+        sub("\\s*=\\s*element_text\\(.*$", "", elem_match)
+      } else {
+        "unknown_element"
+      }
+      rel_entries <- rbind(rel_entries, data.frame(
+        element_name = elem_name, rel_value = rv,
+        stringsAsFactors = FALSE))
+    }
+  }
+  has_rel_sizes <- nrow(rel_entries) > 0
 
   # Check for geom_text / geom_text_repel / geom_label size parameters
   # Good: size = cex * base_size / ggplot2::.pt  (scales with base_size)
@@ -185,6 +211,7 @@ for (i in seq_along(chunk_starts)) {
       has_absolute_sizes = has_absolute_sizes,
       absolute_sizes     = absolute_size_values,
       has_rel_sizes          = has_rel_sizes,
+      rel_entries            = rel_entries,
       has_raw_geom_text_size = has_raw_geom_text_size,
       has_facets             = has_facets,
       facet_formula      = facet_formula,
@@ -195,15 +222,26 @@ for (i in seq_along(chunk_starts)) {
 }
 
 # --- Find document-level base_size ---
-# Look for theme_set(theme_*(base_size = N)) outside of specific plot chunks
+# Look for theme_set(theme_*(base_size = N)) outside of specific plot chunks.
+# Also handle the pattern: base_size <- N; theme_set(theme_*(base_size = base_size))
 all_code <- paste(lines, collapse = "\n")
+
+# First try: literal number in theme_set call
 doc_base_match <- regmatches(all_code,
   regexpr("theme_set\\(\\s*theme_\\w+\\(\\s*base_size\\s*=\\s*([0-9.]+)",
           all_code, perl = TRUE))
 doc_base_size <- if (length(doc_base_match) > 0) {
   as.numeric(sub(".*base_size\\s*=\\s*", "", doc_base_match))
 } else {
-  11  # ggplot2 default
+  # Second try: theme_set uses a variable — look for base_size <- N assignment
+  var_match <- regmatches(all_code,
+    regexpr("base_size\\s*<-\\s*([0-9.]+)", all_code, perl = TRUE))
+  if (length(var_match) > 0 &&
+      grepl("theme_set\\(", all_code)) {
+    as.numeric(sub(".*<-\\s*", "", var_match))
+  } else {
+    11  # ggplot2 default
+  }
 }
 
 # --- Report ---
@@ -233,6 +271,28 @@ for (r in results) {
     issues <- c(issues, sprintf(
       "Effective base_size = %.1f pt (%.0f × %.2f) < %.0f pt minimum",
       effective_base, base, scale_factor, min_pt))
+  }
+
+  # Check rel() values for compounded effective size
+  if (nrow(r$rel_entries) > 0) {
+    for (ri in seq_len(nrow(r$rel_entries))) {
+      eff_rel <- effective_base * r$rel_entries$rel_value[ri]
+      if (eff_rel < min_pt) {
+        issues <- c(issues, sprintf(
+          "%s: rel(%.2f) → %.1f pt effective (%.1f × %.2f) < %.0f pt minimum",
+          r$rel_entries$element_name[ri], r$rel_entries$rel_value[ri],
+          eff_rel, effective_base, r$rel_entries$rel_value[ri], min_pt))
+      }
+    }
+    # Only show min safe rel() when at least one rel() value is too small
+    any_rel_too_small <- any(
+      effective_base * r$rel_entries$rel_value < min_pt)
+    if (any_rel_too_small) {
+      min_safe_rel <- min_pt / effective_base
+      issues <- c(issues, sprintf(
+        "min safe rel(): %.2f (for effective >= %.0f pt with base %.1f pt)",
+        min_safe_rel, min_pt, effective_base))
+    }
   }
 
   if (r$has_absolute_sizes) {

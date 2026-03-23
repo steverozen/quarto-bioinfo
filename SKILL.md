@@ -83,7 +83,18 @@ Wrap wide content (plotly widgets, wide tables) in full-viewport divs:
   ```r
   knitr::kable(as.data.frame.matrix(table(sce$condition, sce$donor_id)))
   ```
-- Use `row.names = FALSE` in `knitr::kable()` or `DT::datatable()` when row names duplicate a column.
+- **Row names handling**: Before displaying any table, check whether the row
+  names are redundant with an existing column (e.g. row names like `NNAT...1`,
+  `KIF26B...2` that duplicate a `gene` column — R's `make.unique()` suffixes
+  are a strong signal of redundancy). Apply these rules:
+  - **Redundant**: suppress with `rownames = FALSE` (`DT::datatable()`) or
+    `row.names = FALSE` (`knitr::kable()`).
+  - **Not redundant** (row names carry meaningful information not in any column):
+    promote them to a proper column so they are filterable/sortable:
+    ```r
+    df <- tibble::rownames_to_column(df, var = "row_id")
+    DT::datatable(df, rownames = FALSE, filter = "top")
+    ```
 - When a table contains gene symbols or gene IDs, make them clickable links (e.g. to NCBI Gene, Ensembl, or GeneCards).
 
 ## Session Info
@@ -169,6 +180,24 @@ The minimum acceptable `effective_size` is **6 pt**. For example:
 - `base_size = 14`, `fig-width: 16` → 14 × (10/16) = **8.75 pt** ✓
 - `base_size = 14`, `fig-width: 24` → 14 × (10/24) = **5.8 pt** ✗ — increase `base_size` to 15+
 - `base_size = 11`, `fig-width: 16` → 11 × (10/16) = **6.9 pt** ✓ (barely)
+
+### rel() values compound with scale factor
+
+When `rel()` is used inside `element_text()`, the effective rendered size compounds
+the base_size, scale factor, and rel value:
+
+```
+effective_rel_size = base_size × scale_factor × rel_value
+min_rel = min_pt / (base_size × scale_factor)
+```
+
+Examples for min_pt = 6:
+- fig-width: 10, base_size: 14 → scale = 1.0, min_rel = 0.43
+- fig-width: 16, base_size: 14 → scale = 0.625, min_rel = 0.69
+- fig-width: 16, base_size: 11 → scale = 0.625, min_rel = 0.87
+
+A `rel(0.6)` that looks fine at `fig-width: 10` can produce unreadably small
+text at `fig-width: 16`. The checker now validates these compounded sizes.
 
 ### Automated check script
 
@@ -299,11 +328,11 @@ When reviewing or authoring a bioinformatics `.qmd`, verify:
 - [ ] `dplyr::filter()` used instead of bare `filter()`
 - [ ] File paths use `here::here()`
 - [ ] No `cat()` + `table()` or `cat()` + `print()` for tabular data (use `kable` or `DT`)
-- [ ] Tables suppress redundant row names
+- [ ] Tables handle row names correctly (suppress if redundant with a column; promote to a filterable column if meaningful)
 - [ ] Gene symbols/IDs are clickable links
 - [ ] No faceted plot has more than ~15 panels (split if needed)
 - [ ] All `element_text(size = ...)` uses `rel()`, never absolute values
-- [ ] Effective base_size ≥ 6 pt (run `check-figure-sizes.R` to verify)
+- [ ] Effective base_size ≥ 6 pt and all `rel()` elements ≥ 6 pt effective (run `check-figure-sizes.R` to verify)
 - [ ] Facet strip labels placed correctly (`switch = "y"`, `strip.placement = "outside"`)
 - [ ] Plotly sizing in `plot_ly()`/`ggplotly()`, not `layout()`
 - [ ] Wide content wrapped in `:::{.column-screen}`
