@@ -6,7 +6,7 @@ Bioinformatics Quarto document authoring, review, and repair.
 
 Triggers when working on .qmd files involving single-cell RNA-seq, differential expression, gene set enrichment, or other bioinformatics analyses. 
 
-Also user invocable e.g.
+Also user invocable at the Claude Code command promp e.g.
 ```
 /quarto-bioinfo @some_doc.qmd
 ```
