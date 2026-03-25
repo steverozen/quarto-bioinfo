@@ -32,8 +32,9 @@ Every bioinformatics `.qmd` must use this YAML structure:
 ```yaml
 ---
 title: "Document Title"
+subtitle: "Source: `path/to/file.qmd`"
 author: "Steve Rozen (sr110@duke.edu, steverozen@pm.me)"
-date: now
+date: last-modified
 date-format: "YYYY-MM-DD HH:mm"
 format:
   html:
