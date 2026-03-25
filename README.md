@@ -13,5 +13,5 @@ Quarto formatting for bioinformatics reports.
 `check-figure-sizes.R` tries to reivew figures for legibiliyt, incluidng text size.
 It is not always successful.
 
-`check-html-warnings` reviews the rendered HTML for warnings generated during
+`check-html-warnings.R` reviews the rendered HTML for warnings generated during
 rendering.
