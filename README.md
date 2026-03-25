@@ -6,7 +6,10 @@ Bioinformatics Quarto document authoring, review, and repair.
 
 Triggers when working on .qmd files involving single-cell RNA-seq, differential expression, gene set enrichment, or other bioinformatics analyses. 
 
-Also user invocable e.g. `/quarto-bioinfo @some_doc.qmd`.
+Also user invocable e.g.
+```
+/quarto-bioinfo @some_doc.qmd
+```
 
 Covers plot and table readability, literature citations for method, 
 R coding conventions and preferred package ues, and and general 
