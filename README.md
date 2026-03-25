@@ -8,7 +8,7 @@ Triggers when working on .qmd files involving single-cell RNA-seq, differential 
 
 Also user invocable at the Claude Code command promp e.g.
 ```
-/quarto-bioinfo @some_doc.qmd
+❯ /quarto-bioinfo @some_doc.qmd
 ```
 
 Covers plot and table readability, literature citations for method, 
