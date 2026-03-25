@@ -21,6 +21,9 @@ When this skill is active, also load these companion skills for general Quarto g
 - Always use `dplyr::filter()` (never bare `filter()`) to avoid `stats::filter()` conflicts.
 - Use `here::here(<path relative to project root>)` for all file paths, because Quarto renders in the directory containing the `.qmd` file.
 - Use namespace-qualified calls for functions that have common name collisions (e.g. `dplyr::select()`, `dplyr::rename()`).
+- **Suppress diagnostic output from `gc()`**: `gc()` returns a matrix of memory
+  statistics and prints it to the console. Always wrap in `invisible(gc())` to
+  keep rendered output clean.
 
 ## Quarto YAML Header
 
@@ -334,7 +337,25 @@ need manual panel-count review. Fix all warnings before rendering.
      theme(strip.placement = "outside")
    ```
 
-4. **Color accessibility** — Use colorblind-friendly palettes when possible.
+4. **Max 2 plots per row** — When arranging multiple plots with `wrap_plots()`,
+   `plot_grid()`, or patchwork `+` / `|` operators, never put more than 2
+   plots side by side (`ncol <= 2`). Wide multi-plot rows shrink each panel
+   too much for labels and annotations to remain readable. Prefer taller
+   figures with more rows instead.
+
+   ```r
+   # Bad — 5 plots squeezed into one row:
+   wrap_plots(plot_list, nrow = 1)
+
+   # Good — at most 2 per row, tall figure:
+   wrap_plots(plot_list, ncol = 2)
+   ```
+
+   When switching from a single wide row to `ncol = 2`, also adjust the
+   chunk's `fig-width` and `fig-height` accordingly (e.g. `fig-width: 10`,
+   `fig-height: 15` for 5 plots in a 3 × 2 grid).
+
+5. **Color accessibility** — Use colorblind-friendly palettes when possible.
    Check that fill/color encodings are distinguishable.
 
 ## Bioinformatics Method References
@@ -416,6 +437,8 @@ When reviewing or authoring a bioinformatics `.qmd`, verify:
 - [ ] Gene symbols/IDs are clickable links
 - [ ] GSEA uses clusterProfiler::GSEA() + enrichplot (not raw fgsea + manual ggplot)
 - [ ] No faceted plot has more than ~15 panels (split if needed)
+- [ ] Multi-plot layouts have at most 2 plots per row (`ncol <= 2`; run `check-figure-sizes.R` to verify)
+- [ ] `gc()` calls wrapped in `invisible()` to suppress diagnostic output
 - [ ] All `element_text(size = ...)` uses `rel()`, never absolute values
 - [ ] Effective base_size ≥ 6 pt and all `rel()` elements ≥ 6 pt effective (run `check-figure-sizes.R` to verify)
 - [ ] Facet strip labels placed correctly (`switch = "y"`, `strip.placement = "outside"`)

@@ -198,6 +198,30 @@ for (i in seq_along(chunk_starts)) {
     }
   }
 
+  # Detect multi-plot layouts (wrap_plots, plot_grid) with too many per row
+  layout_issue <- NA_character_
+  if (grepl("wrap_plots\\(|plot_grid\\(", chunk_code)) {
+    # Check for explicit nrow = 1 (everything on one row)
+    if (grepl("(wrap_plots|plot_grid)\\([^)]*nrow\\s*=\\s*1[^0-9]", chunk_code, perl = TRUE)) {
+      layout_issue <- "nrow = 1 forces all plots onto a single row; use ncol = 2 instead"
+    }
+    # Check for ncol > 2
+    ncol_layout_match <- regmatches(chunk_code,
+      regexpr("(wrap_plots|plot_grid)\\([^)]*ncol\\s*=\\s*([0-9]+)", chunk_code, perl = TRUE))
+    if (length(ncol_layout_match) > 0) {
+      ncol_val <- as.numeric(sub(".*ncol\\s*=\\s*", "", ncol_layout_match))
+      if (ncol_val > 2) {
+        layout_issue <- sprintf("ncol = %d exceeds max 2 plots per row; use ncol = 2", ncol_val)
+      }
+    }
+    # Check for patchwork nrow(1) on horizontal concatenation (p1 + p2 + p3 + ...)
+    # We can't easily count patchwork + operators, but the above catches wrap_plots/plot_grid
+  }
+
+  # Detect bare gc() calls (should use invisible(gc()))
+  has_bare_gc <- grepl("(?<!invisible\\()gc\\(\\)", chunk_code, perl = TRUE) &&
+    !grepl("invisible\\(gc\\(\\)\\)", chunk_code)
+
   # Only store chunks that have ggplot or plot_ly calls
   is_plot_chunk <- grepl("ggplot\\(|plot_ly\\(|geom_|wrap_plots\\(", chunk_code)
 
@@ -216,7 +240,9 @@ for (i in seq_along(chunk_starts)) {
       has_facets             = has_facets,
       facet_formula      = facet_formula,
       facet_ncol         = facet_ncol,
-      facet_nrow         = facet_nrow
+      facet_nrow         = facet_nrow,
+      layout_issue       = layout_issue,
+      has_bare_gc        = has_bare_gc
     )
   }
 }
@@ -320,6 +346,17 @@ for (r in results) {
       r$facet_formula))
   }
 
+  # Check multi-plot layout (max 2 per row)
+  if (!is.na(r$layout_issue)) {
+    issues <- c(issues, r$layout_issue)
+  }
+
+  # Check for bare gc() leaking diagnostic output
+  if (isTRUE(r$has_bare_gc)) {
+    issues <- c(issues,
+      "gc() without invisible() — diagnostic table will leak into output; use invisible(gc())")
+  }
+
   status <- if (length(issues) == 0) "OK" else "WARNING"
 
   cat(sprintf("[%s] %s (line %d)\n", status, r$label, r$line))
@@ -333,6 +370,71 @@ for (r in results) {
     }
   }
   cat("\n")
+}
+
+# --- Whole-file checks (not tied to plot chunks) ---
+
+# Check for bare gc() in any R chunk (not just plot chunks)
+for (i in seq_along(chunk_starts)) {
+  chunk_code <- paste(lines[chunk_starts[i]:chunk_ends[i]], collapse = "\n")
+  # Skip if chunk has #| include: false or #| echo: false + #| output: false
+  has_bare_gc <- grepl("(?<!invisible\\()gc\\(\\)", chunk_code, perl = TRUE) &&
+    !grepl("invisible\\(gc\\(\\)\\)", chunk_code)
+  if (has_bare_gc) {
+    # Extract label for reporting
+    label_match <- regmatches(chunk_code,
+      regexpr("#\\|\\s*label:\\s*([^\\n]+)", chunk_code, perl = TRUE))
+    label <- if (length(label_match) > 0) {
+      sub("#\\|\\s*label:\\s*", "", label_match)
+    } else {
+      paste0("chunk-line-", chunk_starts[i])
+    }
+    # Don't double-report if already reported in the plot-chunk loop
+    already_reported <- any(sapply(results, function(r) r$line == chunk_starts[i]))
+    if (!already_reported) {
+      warnings_found <- warnings_found + 1
+      cat(sprintf("[WARNING] %s (line %d)\n", label, chunk_starts[i]))
+      cat("  ⚠ gc() without invisible() — diagnostic table will leak into output; use invisible(gc())\n\n")
+    }
+  }
+}
+
+# Check for wrap_plots / plot_grid in non-plot chunks (unlikely but be thorough)
+for (i in seq_along(chunk_starts)) {
+  chunk_code <- paste(lines[chunk_starts[i]:chunk_ends[i]], collapse = "\n")
+  already_reported <- any(sapply(results, function(r) r$line == chunk_starts[i]))
+  if (already_reported) next
+  if (grepl("wrap_plots\\(|plot_grid\\(", chunk_code)) {
+    if (grepl("(wrap_plots|plot_grid)\\([^)]*nrow\\s*=\\s*1[^0-9]", chunk_code, perl = TRUE)) {
+      label_match <- regmatches(chunk_code,
+        regexpr("#\\|\\s*label:\\s*([^\\n]+)", chunk_code, perl = TRUE))
+      label <- if (length(label_match) > 0) {
+        sub("#\\|\\s*label:\\s*", "", label_match)
+      } else {
+        paste0("chunk-line-", chunk_starts[i])
+      }
+      warnings_found <- warnings_found + 1
+      cat(sprintf("[WARNING] %s (line %d)\n", label, chunk_starts[i]))
+      cat("  ⚠ nrow = 1 forces all plots onto a single row; use ncol = 2 instead\n\n")
+    }
+    ncol_layout_match <- regmatches(chunk_code,
+      regexpr("(wrap_plots|plot_grid)\\([^)]*ncol\\s*=\\s*([0-9]+)", chunk_code, perl = TRUE))
+    if (length(ncol_layout_match) > 0) {
+      ncol_val <- as.numeric(sub(".*ncol\\s*=\\s*", "", ncol_layout_match))
+      if (ncol_val > 2) {
+        label_match <- regmatches(chunk_code,
+          regexpr("#\\|\\s*label:\\s*([^\\n]+)", chunk_code, perl = TRUE))
+        label <- if (length(label_match) > 0) {
+          sub("#\\|\\s*label:\\s*", "", label_match)
+        } else {
+          paste0("chunk-line-", chunk_starts[i])
+        }
+        warnings_found <- warnings_found + 1
+        cat(sprintf("[WARNING] %s (line %d)\n", label, chunk_starts[i]))
+        cat(sprintf("  ⚠ ncol = %d exceeds max 2 plots per row; use ncol = 2\n\n", ncol_val))
+      }
+    }
+  }
 }
 
 cat(strrep("=", 70), "\n")
