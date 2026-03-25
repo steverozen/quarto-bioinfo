@@ -1,4 +1,4 @@
-# Skills for bioinformtics-oriented quarto documents
+# Skills for R/bioinformatics-oriented quarto documents
 
 # This is a work in progress; use at your own risk.
 
