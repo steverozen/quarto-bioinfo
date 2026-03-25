@@ -398,6 +398,10 @@ The script classifies each issue:
 Fix all issues, re-render, and re-run the checker until clean. The goal is
 zero `cell-output-stderr` blocks in the final HTML.
 
+## Post-render figure inspection
+
+Look at the figures and re-do or resize if text is too small or if there is superimposed text.
+
 ## Review Checklist
 
 When reviewing or authoring a bioinformatics `.qmd`, verify:
@@ -420,4 +424,5 @@ When reviewing or authoring a bioinformatics `.qmd`, verify:
 - [ ] References section cites all methods used, with verified links
 - [ ] Session Info is the last section (collapsible callout)
 - [ ] No warnings or stray messages in rendered HTML (run `check-html-warnings.R` to verify)
+- [ ] Text in figures is big enough and there is no superimposed text in figures
 - [ ] Alt text provided for key figures (invoke `quarto:quarto-alt-text`)
