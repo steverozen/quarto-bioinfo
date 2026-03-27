@@ -29,9 +29,7 @@ def main():
     with open(filepath, "r") as f:
         content = f.read()
 
-    new_content = re.sub(
-        r"```\{r ([a-zA-Z][a-zA-Z0-9_-]*)\}", replace_label, content
-    )
+    new_content = re.sub(r"```\{r ([a-zA-Z][a-zA-Z0-9_-]*)\}", replace_label, content)
 
     n_replaced = content != new_content
     if not n_replaced:
