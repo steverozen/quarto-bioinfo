@@ -59,6 +59,12 @@ Never use `` ```{r label-text} ``. Always use:
 ```
 ````
 
+To bulk-convert existing inline labels, run:
+
+```bash
+python3 ~/.claude/skills/quarto-bioinfo/fix-chunk-labels.py <file.qmd>
+```
+
 ## Dynamic Values
 
 Never hard-code computed values as fixed text. Always use inline R expressions (`` `r ...` ``) or dynamically generated tables so values update when data changes.
