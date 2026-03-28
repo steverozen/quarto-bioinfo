@@ -203,6 +203,8 @@ sessioninfo::session_info(info = "all")
 All text in ggplot figures must scale from `base_size` so that readability
 can be verified from a single number.
 
+0. **Always name to global variable for base size `base_size`**
+
 1. **Set `base_size` once** — either per-document via `theme_set(theme_bw(base_size = 14))`
    or per-plot via `+ theme_bw(base_size = 14)`.
 
