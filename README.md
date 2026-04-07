@@ -12,7 +12,7 @@ Also user invocable at the Claude Code command promp e.g.
 ```
 
 Covers plot and table readability, literature citations for method, 
-R coding conventions and preferred package ues, and and general 
+R coding conventions and preferred package uses, and and general 
 Quarto formatting for bioinformatics reports.
 
 `check-figure-sizes.R` tries to reivew figures for legibility, incluidng text size.
