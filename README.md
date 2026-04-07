@@ -11,7 +11,7 @@ Also user-invocable at the Claude Code command promp e.g.
 ❯ /quarto-bioinfo @some_doc.qmd
 ```
 
-Covers plot and table readability, literature citations for method, 
+Covers plot and table readability, literature citations for methods, 
 R coding conventions and preferred package uses, and and general 
 Quarto formatting for bioinformatics reports.
 
