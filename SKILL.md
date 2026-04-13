@@ -364,8 +364,11 @@ need manual panel-count review. Fix all warnings before rendering.
    chunk's `fig-width` and `fig-height` accordingly (e.g. `fig-width: 10`,
    `fig-height: 15` for 5 plots in a 3 × 2 grid).
 
-5. **Color accessibility** — Use colorblind-friendly palettes when possible.
-   Check that fill/color encodings are distinguishable.
+5. **Color accessibility** — Use colorblind-friendly palettes. Never use
+   red-and-green together in heatmaps or color scales (indistinguishable for
+   red-green colorblind viewers). Prefer diverging palettes like `RdBu`
+   (red–blue) or `PuOr` (purple–orange), and sequential palettes from
+   viridis. Check that all fill/color encodings are distinguishable.
 
 ## Bioinformatics Method References
 
@@ -457,4 +460,5 @@ When reviewing or authoring a bioinformatics `.qmd`, verify:
 - [ ] Session Info is the last section (collapsible callout)
 - [ ] No warnings or stray messages in rendered HTML (run `check-html-warnings.R` to verify)
 - [ ] Text in figures is big enough and there is no superimposed text in figures
+- [ ] No red-green color combinations in heatmaps or color scales (use `RdBu`, `PuOr`, or viridis)
 - [ ] Alt text provided for key figures (invoke `quarto:quarto-alt-text`)
