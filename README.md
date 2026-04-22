@@ -6,13 +6,13 @@ Bioinformatics Quarto document authoring, review, and repair.
 
 Triggers when working on .qmd files involving single-cell RNA-seq, differential expression, gene set enrichment, or other bioinformatics analyses. 
 
-Also user invocable at the Claude Code command promp e.g.
+Also user-invocable at the Claude Code command prompt e.g.
 ```
 ❯ /quarto-bioinfo @some_doc.qmd
 ```
 
-Covers plot and table readability, literature citations for method, 
-R coding conventions and preferred package ues, and and general 
+Covers plot and table readability, literature citations for methods, 
+R coding conventions and preferred package uses, and and general 
 Quarto formatting for bioinformatics reports.
 
 `check-figure-sizes.R` tries to reivew figures for legibility, incluidng text size.
