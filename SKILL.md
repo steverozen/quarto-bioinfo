@@ -34,10 +34,11 @@ Every bioinformatics `.qmd` must use this YAML structure:
 title: "Document Title"
 subtitle: "Source: `path/to/file.qmd`"
 author: "Steve Rozen (sr110@duke.edu, steverozen@pm.me)"
-date: last-modified
+date: now
 date-format: "YYYY-MM-DD HH:mm"
 format:
   html:
+    embed-resources: true
     page-layout: full
     include-in-header:
       text: |
@@ -68,6 +69,11 @@ python3 ~/.claude/skills/quarto-bioinfo/fix-chunk-labels.py <file.qmd>
 ## Dynamic Values
 
 Never hard-code computed values as fixed text. Always use inline R expressions (`` `r ...` ``) or dynamically generated tables so values update when data changes.
+
+The R expression should not be a precomputed constant that might change with re-rendering.
+For example, to not compute a value e.g. 123 based on paramters that you might, change then
+"We got a value of `` `r 123` `` with parameter `` `r some_param` ``.  This is as bad
+as writing "We got a value of 123 with ..."  
 
 ## Plotly Sizing
 
