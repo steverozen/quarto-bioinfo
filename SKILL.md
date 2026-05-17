@@ -66,14 +66,37 @@ To bulk-convert existing inline labels, run:
 python3 ~/.claude/skills/quarto-bioinfo/fix-chunk-labels.py <file.qmd>
 ```
 
-## Dynamic Values
+## Define constants one time only for the entire quarto document and put them in variables
 
-Never hard-code computed values as fixed text. Always use inline R expressions (`` `r ...` ``) or dynamically generated tables so values update when data changes.
+Good example because we put the constants once in variances in a single, easy-to-find code block.
+Then, throughout the document, we use the values in the variables. It is ok if the variables with 
+constants are set in parameters.
 
-The R expression should not be a precomputed constant that might change with re-rendering.
-For example, to not compute a value e.g. 123 based on paramters that you might, change then
-"We got a value of `` `r 123` `` with parameter `` `r some_param` ``.  This is as bad
-as writing "We got a value of 123 with ..."  
+```{r}
+#| label: cohort-sizes
+non_obese_n <- 142
+obese_n     <- 76
+```
+
+Cohort: `` `r non_obese_n + obese_n` `` patients total (`` `r non_obese_n` `` non-obese, `` `r obse_n` `` obese).
+Success-rate inputs are taken from the preliminary IVF dataset; cell counts
+below are derived from these rates and rounded to the nearest integer.
+
+
+Negative example, never ever do something like the example below. For example, if the number of
+non-obese patients changes to 142, we will likely miss some of the places where we need
+to change 142 to 141. This error is very easy to miss.
+
+Cohort: `` `r 142 + 76` `` patients total (142 non-obese, 76 obese).
+Success-rate inputs are taken from the preliminary IVF dataset; cell counts
+below are derived from these rates and rounded to the nearest integer.
+
+```{r}
+#| label: cohort-sizes
+non_obese_n <- 142
+obese_n     <- 76
+```
+
 
 ## Plotly Sizing
 
