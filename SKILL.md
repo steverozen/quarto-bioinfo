@@ -40,6 +40,7 @@ format:
   html:
     embed-resources: true
     page-layout: full
+    link-external-newwindow: true
     include-in-header:
       text: |
         <style>
@@ -399,9 +400,41 @@ need manual panel-count review. Fix all warnings before rendering.
    (red–blue) or `PuOr` (purple–orange), and sequential palettes from
    viridis. Check that all fill/color encodings are distinguishable.
 
+## Links
+
+Every URL in the document must be a **clickable link** that **opens in a new
+browser tab**. This applies everywhere: body text, figure and table captions,
+table cells, gene and pathway identifiers, and the References section.
+
+- Never leave a bare URL as plain, unlinked text.
+- Set `link-external-newwindow: true` in the YAML header (see the template
+  above). Quarto then adds `target="_blank" rel="noopener"` to every external
+  link it renders from markdown, so plain markdown links like
+  `[limma](https://doi.org/10.1093/nar/gkv007)` need nothing extra.
+- For links you build yourself in R (table cells, `DT::datatable()` columns,
+  gene symbol links, anything emitted as raw HTML), Quarto does not rewrite the
+  anchor, so write the attributes explicitly:
+
+  ```r
+  # Gene symbols as links that open in a new tab
+  df$gene <- sprintf(
+    '<a href="https://www.genecards.org/cgi-bin/carddisp.pl?gene=%s" target="_blank" rel="noopener">%s</a>',
+    df$gene, df$gene
+  )
+  DT::datatable(df, escape = FALSE, rownames = FALSE, filter = "top")
+  ```
+
+  Note `escape = FALSE` in both `DT::datatable()` and `knitr::kable()`, without
+  it the anchor tags render as literal text.
+- Always include `rel="noopener"` alongside `target="_blank"`.
+- In a single markdown link, `[text](url){target="_blank"}` also works and is
+  useful when the global YAML option is not in effect.
+
 ## Bioinformatics Method References
 
 Every bioinformatics report should include a **References** section citing the methods and tools used. For each reference provide: author(s), year, title, and a verified web link.
+
+Every reference link must be clickable and open in a new tab, see the **Links** section above.
 
 **Before including any link, fetch it and confirm it resolves to the correct paper.** Prefer Internet Archive (`https://archive.org`) for book references.
 
@@ -468,7 +501,7 @@ Look at the figures and re-do or resize if text is too small or if there is supe
 
 When reviewing or authoring a bioinformatics `.qmd`, verify:
 
-- [ ] YAML header follows the template (author, date, page-layout, CSS)
+- [ ] YAML header follows the template (author, date, page-layout, `link-external-newwindow: true`, CSS)
 - [ ] Code blocks use `#| label:` syntax (not inline labels)
 - [ ] All computed values are dynamic (inline R or generated tables)
 - [ ] `dplyr::filter()` used instead of bare `filter()`
@@ -476,6 +509,8 @@ When reviewing or authoring a bioinformatics `.qmd`, verify:
 - [ ] No `cat()` + `table()` or `cat()` + `print()` for tabular data (use `kable` or `DT`)
 - [ ] Tables handle row names correctly (suppress if redundant with a column; promote to a filterable column if meaningful)
 - [ ] Gene symbols/IDs are clickable links
+- [ ] Every URL in the document is a clickable link, no bare unlinked URLs
+- [ ] All links open in a new tab (`link-external-newwindow: true`, plus explicit `target="_blank" rel="noopener"` on hand-built HTML anchors)
 - [ ] GSEA uses clusterProfiler::GSEA() + enrichplot (not raw fgsea + manual ggplot)
 - [ ] No faceted plot has more than ~15 panels (split if needed)
 - [ ] Multi-plot layouts have at most 2 plots per row (`ncol <= 2`; run `check-figure-sizes.R` to verify)
@@ -485,7 +520,7 @@ When reviewing or authoring a bioinformatics `.qmd`, verify:
 - [ ] Facet strip labels placed correctly (`switch = "y"`, `strip.placement = "outside"`)
 - [ ] Plotly sizing in `plot_ly()`/`ggplotly()`, not `layout()`
 - [ ] Wide content wrapped in `:::{.column-screen}`
-- [ ] References section cites all methods used, with verified links
+- [ ] References section cites all methods used, with verified links that are clickable and open in a new tab
 - [ ] Session Info is the last section (collapsible callout)
 - [ ] No warnings or stray messages in rendered HTML (run `check-html-warnings.R` to verify)
 - [ ] Text in figures is big enough and there is no superimposed text in figures
